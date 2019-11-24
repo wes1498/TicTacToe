@@ -1,14 +1,26 @@
-
 CXX = g++
 WARNINGS = -pedantic -Wall -Werror -Wfatal-errors -Wextra -Wno-unused-parameter -Wno-unused-variable
 CXXFLAGS = -Wall -g
 
 # Executable dependencies
-main: main.o board.o
-	$(CXX) $(CXXFLAGS) -o main main.o board.o
-board: Board.o
+server: server.o board.o
+	$(CXX) $(CXXFLAGS) -o server server.o board.o
+
+client: client.o
+	$(CXX) $(CXXFLAGS) -o client client.o board.o
+
+board: board.o
 
 # Object Files
-main.o: main.cpp board.h
-	$(CXX) $(CXXFLAGS) -c main.cpp
-Board.o: board.h
+server.o: server.cpp board.h
+	$(CXX) $(CXXFLAGS) -c server.cpp
+
+client.o: client.cpp board.h
+	$(CXX) $(CXXFLAGS) -c client.cpp
+
+board.o: board.h
+
+clean:
+	rm -rf server \
+		client \
+		board 
