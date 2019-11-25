@@ -44,4 +44,6 @@ int main(int argc, char *argv[]){
     client_socket = accept(network_socket, NULL, NULL);
 
     send(client_socket, server_message, sizeof(server_message), 0);
+
+    close(network_socket);
 }

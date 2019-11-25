@@ -5,6 +5,17 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+void error(const char *msg)
+{
+    #ifdef DEBUG
+    perror(msg);
+    #else
+    printf("The game Disconnected.\nGame over.\n");
+    #endif 
+
+    exit(0);
+}
+
 int connect_client_socket(int port_number)
 {
     // Create network socket
@@ -15,6 +26,9 @@ int connect_client_socket(int port_number)
        SOCKET_PROTOCOL set to 0 == default TCP */
 
     network_socket = socket(AF_INET, SOCK_STREAM, 0);
+
+    if (network_socket < 0) 
+        error("ERROR opening socket for server.");
 
     // specify address for the socket
     struct sockaddr_in server_address;
@@ -29,7 +43,8 @@ int connect_client_socket(int port_number)
     int connection_status = connect(network_socket, (struct sockaddr *) &server_address, sizeof(server_address));	
 
     if (connection_status == -1) {
-        printf("There was an error connecting to the remote socket.\n\n");
+        error("Error in connecting to the server.");
+        //printf("There was an error connecting to the remote socket.\n\n");
     }
     return network_socket;
 
@@ -45,5 +60,5 @@ int main(int argc, char *argv[]){
     // print server response
     printf("the server sent the data %s\n", server_response); 
 
-    //close(network_socket);
+    close(network_socket);
 }
