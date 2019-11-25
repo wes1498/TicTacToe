@@ -1,5 +1,17 @@
-**Tic-Tac-Toe**
+**Distributed Tic-Tac-Toe**
 =============
 
-Tic-Tac-Toe game using [OpenMP library](https://www.openmp.org/) for multi-process programming 
+To compile, cd to this directory and run:
+```
+make
+```
 
+To run the server:
+```
+./server
+```
+
+To run clients:
+```
+./client
+```
