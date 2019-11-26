@@ -8,10 +8,10 @@ make
 
 To run the server:
 ```
-./server
+./server [port number]
 ```
 
 To run clients:
 ```
-./client
+./client [server host] [port number]
 ```

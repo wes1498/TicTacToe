@@ -4,15 +4,15 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <pthread.h>
 
+int player_count = 0;
+pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-int play_game() {
-    char board[3][3] = { {' ', ' ', ' '}, /* Game Board */ 
-                         {' ', ' ', ' '}, 
-                         {' ', ' ', ' '} };
-    Board b;
-    b.Draw(board);
-    return 0;
+void error(const char *msg)
+{
+    perror(msg);
+    pthread_exit(NULL);
 }
 
 int setup_listener(int port_number) 
@@ -36,14 +36,17 @@ int setup_listener(int port_number)
 }
 
 int main(int argc, char *argv[]){
-    //printf("Welcome to Tic Tac Toe!\n\n");
-    char server_message[256] = "you have connected to the server!";
-    int network_socket = setup_listener(9002);
-    listen(network_socket, 5);
-    int client_socket;
-    client_socket = accept(network_socket, NULL, NULL);
 
-    send(client_socket, server_message, sizeof(server_message), 0);
+    if (argc < 2) {
+        fprintf(stderr,"ERROR, no port provided\n");
+        exit(1);
+    }
+
+    int network_socket = setup_listener(atoi(argv[1]));
+    //pthread_mutex_init(&count_mutex, NULL);
+
+    pthread_mutex_destroy(&mutexcount);
+    pthread_exit(NULL); 
 
     close(network_socket);
 }
