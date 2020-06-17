@@ -95,7 +95,7 @@ int main(int argc, char *argv[]){
 
     printf("What team are you on? %c's\n", id ? 'X' : 'O');
 
-    Board b;
+    Board b = Board();
     b.draw_board(board);
 
     close(network_socket);

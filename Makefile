@@ -2,6 +2,7 @@ CXX = g++
 WARNINGS = -pedantic -Wall -Werror -Wfatal-errors -Wextra -Wno-unused-parameter -Wno-unused-variable
 CXXFLAGS = -Wall -g
 
+all: server client
 # Executable dependencies
 server: server.o board.o
 	$(CXX) $(CXXFLAGS) -o server server.o board.o
