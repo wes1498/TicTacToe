@@ -17,6 +17,33 @@ void error(const char *msg) {
     pthread_exit(NULL);
 }
 
+/* Writes a message to a client socket. */
+void write_client_message(int client_sockfd, char * msg) {
+    int n = send(client_sockfd, msg, strlen(msg), 0);
+    if (n == -1){error("Error in sending message to client socket.");}
+}
+
+/* Writes a message to both client sockets. */
+void write_clients_message(int* client_sockfd, char * msg) {
+    write_client_message(client_sockfd[0], msg);
+    write_client_message(client_sockfd[1], msg);
+}
+
+int receive_message(int client_sockfd) {
+    // receive clients move (int)
+    int client_move = 0;
+    int n = recv(client_sockfd, &client_move, sizeof(int), 0);
+    
+    if (n == -1) /* Not what we were expecting. Client likely disconnected. */
+        return -1;
+
+    // #ifdef DEBUG
+    // printf("[DEBUG] Received int: %d\n", msg);
+    // #endif 
+    
+    return client_move;
+}
+
 int create_socket(int port_number) {
     // Create server socket
     int server_sockfd;
@@ -35,10 +62,7 @@ int create_socket(int port_number) {
 
     return server_sockfd;
 }
-/* Writes a message to a client socket. */
-void write_client_message(int client_socket, char * message) {
-    write(client_socket, message, strlen(message));
-}
+
 void get_clients(int network_socket_listener, int * client_sockets) {
     int connections = 0;
     socklen_t client_socket_length;
@@ -77,6 +101,22 @@ void get_clients(int network_socket_listener, int * client_sockets) {
     }
 }
 
+int get_player_move(int client_sockfd) {
+
+    /* Tell player to make a move. */
+    write_client_message(client_sockfd, "Make Move");
+
+    /* Get players move. */
+    return receive_message(client_sockfd);
+}
+
+bool is_valid_move(char board[][3], int player_move, int curr_turn) {
+    if (board[player_move/3][player_move%3] == ' ') {
+        return true;
+   }
+   return false;
+}
+
 void* start_game(void *thread_data)  {
 
     //client file descriptor 
@@ -84,10 +124,54 @@ void* start_game(void *thread_data)  {
     char board[3][3] = { {' ', ' ', ' '},
                         {' ', ' ', ' '}, 
                         {' ', ' ', ' '} };
+    printf("Starting Game...\n");
 
     Board b = Board();
     b.draw_board(board);
-    
+
+    write_clients_message(client_sockfd,"Start Game!");
+
+    int prev_turn=1,curr_turn=0;
+    bool game_over=0;
+    int turn_counter=0;
+    while(!game_over) {
+        if(prev_turn != curr_turn){
+            // current player must wait until their turn
+            write_client_message(client_sockfd[(curr_turn + 1) % 2], "Please wait.");
+        }
+        int valid_move=0;
+        int player_move=0;
+        while(!valid_move) {
+            player_move = get_player_move(client_sockfd[curr_turn]);
+            // the player made an incorrect move
+            if(player_move == -1){break;}
+            if(is_valid_move(board, player_move, curr_turn)) {
+                valid_move=1;
+            } else {write_client_message(client_sockfd[curr_turn],"Invalid Move.");}
+
+        }
+
+        if(valid_move == -1){
+            printf("Player disconnected.\n");
+            break;
+        } else {
+            // update the board
+            // notify the update to the clients
+            // option: redraw board
+            // check for a winnder/tie
+            if(check_for_winner(board, player_move)){
+                // find winner
+                game_over=true;
+                write_client_message(client_sockfd[curr_turn], "You Won!");
+                write_client_message(client_sockfd[(curr_turn + 1) % 2], "You Lost!");
+                //printf("Player %d won.\n", player_turn);
+            }
+            // Next player turn
+            prev_turn = curr_turn;
+            curr_turn = (curr_turn + 1) % 2;
+            turn_counter++;
+        }
+    }
 
 }
 int main(int argc, char *argv[]){
