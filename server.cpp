@@ -35,6 +35,23 @@ void write_clients_message(int *client_sockfd, char *msg)
     write_client_message(client_sockfd[1], msg);
 }
 
+/* Writes an int to a client socket. */
+void write_client_int(int client_sockfd, int msg)
+{
+    int code = send(client_sockfd, &msg, sizeof(int), 0);
+    if (code == -1)
+    {
+        error("Error sending integer to client");
+    }
+}
+
+/* Writes an int to both client sockets. */
+void write_clients_int(int *cli_sockfd, int msg)
+{
+    write_client_int(cli_sockfd[0], msg);
+    write_client_int(cli_sockfd[1], msg);
+}
+
 int receive_message(int client_sockfd)
 {
     // receive clients move (int)
@@ -113,11 +130,7 @@ void get_clients(int network_socket_listener, int *client_sockets)
 
 int get_player_move(int client_sockfd)
 {
-
-    /* Tell player to make a move. */
     write_client_message(client_sockfd, "Make Move");
-
-    /* Get players move. */
     return receive_message(client_sockfd);
 }
 
@@ -132,25 +145,50 @@ bool is_valid_move(char board[][3], int player_move, int curr_turn)
 
 bool check_for_winner(char board[][3], int prev_move)
 {
-    int row = prev_move/3;
-    int col = prev_move%3;
+    int row = prev_move / 3;
+    int col = prev_move % 3;
 
-    if(board[row][0] == board[row][1] && board[row][1] == board[row][2]) {
+    if (board[row][0] == board[row][1] && board[row][1] == board[row][2])
+    {
         return true;
-    } else if (board[0][col] == board[1][col] && board[1][col] == board[2][col]) {
+    }
+    else if (board[0][col] == board[1][col] && board[1][col] == board[2][col])
+    {
         return true;
-    } else if (prev_move%2 == 0) {
-        if (prev_move == 0 || prev_move == 2 || prev_move == 8) {
-            if(board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+    }
+    else if (prev_move % 2 == 0)
+    {
+        if (prev_move == 0 || prev_move == 2 || prev_move == 8)
+        {
+            if (board[0][0] == board[1][1] && board[1][1] == board[2][2])
+            {
                 return true;
             }
-        } else if (prev_move == 2 || prev_move == 4 || prev_move == 6) {
-            if(board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+        }
+        else if (prev_move == 2 || prev_move == 4 || prev_move == 6)
+        {
+            if (board[0][2] == board[1][1] && board[1][1] == board[2][0])
+            {
                 return true;
             }
         }
     }
     return false;
+}
+
+void update_board(char board[][3], int prev_move, int player_id)
+{
+    board[prev_move / 3][prev_move % 3] = player_id ? 'X' : 'O';
+}
+void notify_players(int *client_sockfd, int prev_move, int player_id)
+{
+
+    write_clients_message(client_sockfd, "Board Updated");
+
+    // send id of player
+    write_clients_int(client_sockfd, player_id);
+
+    write_clients_int(client_sockfd, prev_move);
 }
 
 void *start_game(void *thread_data)
@@ -205,7 +243,9 @@ void *start_game(void *thread_data)
         }
         else
         {
+            update_board(board, player_move, curr_turn);
             // update the board
+            notify_players(client_sockfd, player_count, curr_turn);
             // notify the update to the clients
             // option: redraw board
             // check for a winnder/tie
