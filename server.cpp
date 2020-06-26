@@ -121,7 +121,7 @@ void get_clients(int network_socket_listener, int *client_sockets)
         if (connections == 0)
         {
             // tell client server is waiting for another player
-            write_client_message(client_sockets[0], "WAITING");
+            write_client_message(client_sockets[0], "HOLD");
         }
 
         connections++;
@@ -130,7 +130,7 @@ void get_clients(int network_socket_listener, int *client_sockets)
 
 int get_player_move(int client_sockfd)
 {
-    write_client_message(client_sockfd, "Make Move");
+    write_client_message(client_sockfd, "MOVE");
     return receive_message(client_sockfd);
 }
 
@@ -183,7 +183,7 @@ void update_board(char board[][3], int prev_move, int player_id)
 void notify_players(int *client_sockfd, int prev_move, int player_id)
 {
 
-    write_clients_message(client_sockfd, "Board Updated");
+    write_clients_message(client_sockfd, "UPTD");
 
     // send id of player
     write_clients_int(client_sockfd, player_id);
@@ -204,17 +204,17 @@ void *start_game(void *thread_data)
     Board b = Board();
     b.draw_board(board);
 
-    write_clients_message(client_sockfd, "Start Game!");
+    write_clients_message(client_sockfd, "STRT");
 
     int prev_turn = 1, curr_turn = 0;
-    bool game_over = 0;
+    bool game_over = false;
     int turn_counter = 0;
     while (!game_over)
     {
         if (prev_turn != curr_turn)
         {
             // current player must wait until their turn
-            write_client_message(client_sockfd[(curr_turn + 1) % 2], "Please wait.");
+            write_client_message(client_sockfd[(curr_turn + 1) % 2], "WAIT");
         }
         int valid_move = 0;
         int player_move = 0;
@@ -232,7 +232,7 @@ void *start_game(void *thread_data)
             }
             else
             {
-                write_client_message(client_sockfd[curr_turn], "Invalid Move.");
+                write_client_message(client_sockfd[curr_turn], "INVD");
             }
         }
 
@@ -244,18 +244,22 @@ void *start_game(void *thread_data)
         else
         {
             update_board(board, player_move, curr_turn);
-            // update the board
             notify_players(client_sockfd, player_count, curr_turn);
-            // notify the update to the clients
-            // option: redraw board
-            // check for a winnder/tie
+            b.draw_board(board);
+
             if (check_for_winner(board, player_move))
             {
-                // find winner
+                // found a winner!
                 game_over = true;
-                write_client_message(client_sockfd[curr_turn], "You Won!");
-                write_client_message(client_sockfd[(curr_turn + 1) % 2], "You Lost!");
-                //printf("Player %d won.\n", player_turn);
+                write_client_message(client_sockfd[curr_turn], "WINN");
+                write_client_message(client_sockfd[(curr_turn + 1) % 2], "LOST");
+                printf("Player %d won.\n", curr_turn);
+            }
+            else if (turn_counter == 8)
+            { /* There have been nine valid moves and no winner, game is a draw. */
+                printf("Draw.\n");
+                write_clients_message(client_sockfd, "TIEE");
+                game_over = true;
             }
             // Next player turn
             prev_turn = curr_turn;
@@ -263,6 +267,17 @@ void *start_game(void *thread_data)
             turn_counter++;
         }
     }
+    close(client_sockfd[0]);
+    close(client_sockfd[1]);
+
+    pthread_mutex_lock(&count_mutex);
+    player_count--;
+    player_count--;
+    printf("Number of players is now %d.", player_count);
+    pthread_mutex_unlock(&count_mutex);
+
+    free(client_sockfd);
+    pthread_exit(NULL);
 }
 int main(int argc, char *argv[])
 {
@@ -298,9 +313,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-
+    close(server_sockfd);
     pthread_mutex_destroy(&count_mutex);
     pthread_exit(NULL);
-
-    close(server_sockfd);
 }
