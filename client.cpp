@@ -75,7 +75,7 @@ int receive_int(int network_socket)
     int n = read(network_socket, &msg, sizeof(int));
 
     if (n == -1 || n != sizeof(int))
-        error("ERROR reading int from server socket");
+        error("ERROR reading int from server socket hmm");
 
     return msg;
 }
@@ -86,7 +86,7 @@ void take_turn(int sockfd)
     char buffer[10];
 
     while (1)
-    { /* Ask until we receive. */
+    {
         printf("Enter 0 to 8 available moves on the board. ");
         fgets(buffer, 10, stdin);
         int move = buffer[0] - '0';
@@ -135,13 +135,13 @@ int main(int argc, char *argv[])
     Board b = Board();
     b.draw_board(board);
 
-    char message[6];
+    char message[5];
     do
     {
         receive_message(sockfd, message);
-        if (!strcmp(message, "HOLD"))
+        if (strcmp(message, "HOLD") == 0)
             printf("Waiting for a second player...\n");
-    } while (strcmp(message, "STRT"));
+    } while (strcmp(message, "STRT") != 0);
 
     while (1)
     {

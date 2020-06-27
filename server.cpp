@@ -10,7 +10,7 @@
 #include "board.h"
 
 int player_count = 0;
-pthread_mutex_t count_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t count_mutex;
 
 void error(const char *msg)
 {
@@ -102,12 +102,15 @@ void get_clients(int network_socket_listener, int *client_sockets)
         listen(network_socket_listener, 20 - player_count);
 
         /* Zero out memory for the client information. */
-        //memset(&client_address, 0, sizeof(client_address));
+        memset(&client_address, 0, sizeof(client_address));
 
         client_socket_length = sizeof(client_address);
 
         //Accept the connection from the client.
         client_sockets[connections] = accept(network_socket_listener, (struct sockaddr *)&client_address, &client_socket_length);
+
+        if (client_sockets[connections] < 0)
+            error("ERROR accepting a connection from a client.");
 
         /* Send the client it's ID. */
         write(client_sockets[connections], &connections, sizeof(int));
@@ -209,12 +212,13 @@ void *start_game(void *thread_data)
     int prev_turn = 1, curr_turn = 0;
     bool game_over = false;
     int turn_counter = 0;
-    while (!game_over)
+    while (game_over == false)
     {
         if (prev_turn != curr_turn)
         {
             // current player must wait until their turn
             write_client_message(client_sockfd[(curr_turn + 1) % 2], "WAIT");
+            printf("\n Player %s turn\n", client_sockfd[curr_turn]);
         }
         int valid_move = 0;
         int player_move = 0;
